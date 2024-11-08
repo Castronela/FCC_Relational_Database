@@ -3,12 +3,7 @@
 
 echo -e "\n~~ My Computer Science Students ~~\n"
 
-PSQL="psql -X --username=freecodecamp --dbname=students --no-align --tuples-only -c"
-
-if [[ $(psql -U postgres -lqtA | cut -d \| -f 1 | grep -w students) != students ]]
-then
-  psql -U postgres <students.sql
-fi
+PSQL="psql -X -U $1 -d student --no-align --tuples-only -c"
 
 echo -e "\nFirst name, last name, and GPA of students with a 4.0 GPA:"
 echo "$($PSQL "select first_name, last_name, gpa from students where gpa = 4.0")"
