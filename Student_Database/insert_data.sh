@@ -68,4 +68,7 @@ do
   fi
 done
 
-pg_dump --clean --create --inserts --username=freecodecamp students > students.sql
+if [[ ! -f students.sql ]]
+then
+  pg_dump --clean --create --inserts --username=freecodecamp students > students.sql
+fi
