@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script to insert data from courses.csv and students.csv into students database
 
-PSQL="psql -X --username=freecodecamp --dbname=students --no-align --tuples-only -c"
+PSQL="psql -X -U $1 -d student --no-align --tuples-only -c"
 
 echo $($PSQL "truncate students, majors, courses, majors_courses")
 
@@ -67,8 +67,3 @@ do
     fi
   fi
 done
-
-if [[ ! -f students.sql ]]
-then
-  pg_dump --clean --create --inserts --username=freecodecamp students > students.sql
-fi
