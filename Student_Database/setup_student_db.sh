@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to set up database, tables and columns for Students
-echo -e "\n~~ Student Database setup. ~~\n"
+printf "\n\n%+30s\n\n\n" "~~ Student Database setup ~~"
 
 SQL_USER="david"
 if [[ ! -z $1 ]]; then
@@ -12,7 +12,7 @@ PSQL_STUD="psql -X -U $SQL_USER -d student --no-align --tuples-only -c"
 
 main() {
   while [[ true ]]; do
-    echo -e "\nOptions:\n\t1. create and setup database\n\t2. insert data\n\t3. remove database\n\t4. create dump file\n\t5. import dump file\n\t6. remove dump file\n\t7. show query results\n\t8. remove all and exit\n\t9. exit"
+    print_menu 
     read INPUT
     case "$INPUT" in
     1)
@@ -37,6 +37,23 @@ main() {
     9)
       exit 0;;
     esac
+  done
+}
+
+print_menu() {
+  local MENU=(
+    "create and setup database"
+    "insert data"
+    "remove database"
+    "create dump file"
+    "import dump file"
+    "remove dump file"
+    "show query results"
+    "remove all and exit"
+    "exit"
+  )
+  for i in "${!MENU[@]}"; do
+    printf "%+30s\t%d\n" "${MENU[$i]}" "$(( $i + 1 ))"
   done
 }
 
