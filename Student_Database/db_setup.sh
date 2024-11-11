@@ -1,33 +1,35 @@
 #!/bin/bash
 # Standard PostgreSQL Database Setup File
 
-SCRIPT_HEADER="Bike Rental Shop Database Setup"
+SCRIPT_HEADER="Students Database Setup"
 
 PSQL_USER="david"
-PSQL_DBASE="bikes"
+PSQL_DBASE="student"
 
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
-SCRIPT_FILE_DATA_INIT=""
-SCRIPT_FILE_QUERY=""
+SCRIPT_FILE_DATA_INIT="insert_data.sh"
+SCRIPT_FILE_QUERY="student_info.sh"
 
 TABLES=(
-  "bikes(
-    bike_id serial not null primary key,
-    type varchar (50) not null, 
-    size int not null,
-    available boolean not null default true
+  "majors(
+    major_id serial not null primary key,
+    major varchar (50) not null
   )"
-  "customers(
-    customer_id serial not null primary key,
-    phone varchar (15) not null unique,
-    name varchar (40) not null
+  "courses(
+    course_id serial not null primary key,
+    course varchar (100) not null
   )"
-  "rentals(
-    rental_id serial not null primary key,
-    customer_id int not null references customers(customer_id),
-    bike_id int not null references bikes(bike_id),
-    date_rented date not null default now(),
-    date_returned date
+  "students(
+    student_id serial not null primary key,
+    first_name varchar (50) not null,
+    last_name varchar (50) not null,
+    major_id int references majors(major_id),
+    gpa numeric (2,1)
+  )"
+  "majors_courses(
+    major_id int references majors(major_id),
+    course_id int references courses(course_id),
+    primary key (major_id, course_id)
   )"
 )
 

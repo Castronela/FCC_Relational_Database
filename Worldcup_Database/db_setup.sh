@@ -1,109 +1,61 @@
 #!/bin/bash
-# Set up databse, tables and columns
-printf "\n%+30s\n\n" "~~ Bike Rental Shop Database Setup ~~"
+# Standard PostgreSQL Database Setup File
 
-PSQL_USER="freecodecamp"
+SCRIPT_HEADER="Worldcup Database Setup"
+
+PSQL_USER="david"
 PSQL_DBASE="worldcup"
-SCRIPT_DATA="./insert_data.sh"
-SCRIPT_QUERY="./queries.sh"
+
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
+SCRIPT_FILE_DATA_INIT="insert_data.sh"
+SCRIPT_FILE_QUERY="queries.sh"
+
+TABLES=(
+  "teams(
+    team_id serial not null primary key,
+    name text unique not null
+  )"
+  "games(
+    game_id serial not null primary key,
+    year int not null,
+    round varchar not null,
+    winner_id int not null references teams(team_id),
+    opponent_id int not null references teams(team_id),
+    winner_goals int not null,
+    opponent_goals int not null
+  )"
+)
+
+MENU=(
+  "Database:    Create database and tables:         db_create; tables_create"
+  ":            Remove database:                    db_remove"
+  "Data:        Insert data:                        tables_init"
+  ":            Remove data:                        tables_clear"
+  "Dump:        Create dump file:                   dump_create"
+  ":            Import dump file:                   dump_import"
+  ":            Remove dump file:                   dump_remove"
+  "Query:       Run query:                          query"
+  "Exit:        Remove all and exit:                db_remove; dump_remove; exit 0"
+  ":            Exit with no changes:               exit 0"
+)
+
+PSQL() {
+  local DBASE=$PSQL_DBASE
+  if [[ $2 ]]; then
+    DBASE=$2
+  fi
+  psql -U $PSQL_USER -d $DBASE --no-align --tuples-only -c "$1"
+}
 
 GREEN='\e[32m'
 RED='\e[31m'
+YELLOW='\e[33m'
+BLUE='\e[34m'
+
+BOLD='\e[1m'
+UNDERLINE='\033[4m'
+
 RESET='\e[0m'
-
-# if argument exists, replace SQL user with argument
-if [[ ! -z $1 ]]; then
-  PSQL_USER=$1
-fi
-
-PSQL() {
-  psql -U $PSQL_USER -d $1 --no-align --tuples-only -c "$2"
-}
-
-main() {
-  while [[ true ]]; do
-    display_menu
-    echo -n "Option:"
-    read INPUT
-    OPTION="${MENU[ (( $INPUT - 1 )) ]}"
-    IFS="," read -r _ CMD <<< "$OPTION"
-    eval "$CMD"
-  done
-}
-
-display_menu() {
-  I=0
-  echo
-  menu_database
-  menu_data
-  menu_dump
-  menu_query
-  menu_exit
-  MENU=(
-    "${MENU_DB[@]}"
-    "${MENU_DATA[@]}"
-    "${MENU_DUMP[@]}"
-    "${MENU_QUERY[@]}"
-    "${MENU_EXIT[@]}"
-  )
-}
-
-menu_database() {
-  print_title "Database:"
-  MENU_DB=(
-    "Create Database and Columns, create_db;create_table_teams;create_table_games"
-    "Remove Database, remove_db"
-  )
-  print_arr "${MENU_DB[@]}" 
-}
-
-menu_data() {
-  print_title "Data:"
-  MENU_DATA=(
-    "Insert data, init_tables"
-    "Remove data, clear_tables"
-  )
-  print_arr "${MENU_DATA[@]}" 
-}
-
-menu_dump() {
-  print_title "Dump file:"
-  MENU_DUMP=(
-    "Create dump file, create_dump"
-    "Remove dump file, remove_dump"
-  )
-  print_arr "${MENU_DUMP[@]}" 
-}
-
-menu_query() {
-  print_title "Query:"
-  MENU_QUERY=(
-    "Query tables, run_query"
-  )
-  print_arr "${MENU_QUERY[@]}" 
-}
-
-menu_exit() {
-  print_title "Exit:"
-  MENU_EXIT=(
-    "Remove all and exit, remove_db; remove_dump; exit 0"
-    "Exit, exit 0"
-  )
-  print_arr "${MENU_EXIT[@]}" 
-}
-
-print_arr() {
-  ARR=("$@")
-  for i in "${!ARR[@]}"; do
-    IFS="," read -r LABEL _ <<< "${ARR[$i]}"
-    printf "|\t\t\t%d - %s\n" "$(( $I + 1 ))" "$LABEL"
-    (( I++ ))
-  done
-}
-
-print_title() {
-  printf "| %s\n" "$1"
-}
 
 print_cmd_output() {
   printf "${GREEN}%s${RESET}\n" "$1"
@@ -113,10 +65,42 @@ print_cmd_error() {
   printf "${RED}%s${RESET}\n" "$1"
 }
 
+MAIN() {
+  while [[ true ]]; do
+    MENU_PRINT
+    MENU_EXEC
+  done
+}
 
+MENU_PRINT() {
+  sleep 1
+  printf "${YELLOW}${BOLD}${UNDERLINE}\n%s${RESET}\n" "Menu:"
 
-create_db() {
-  local ERROR=$(PSQL "postgres" "create database $PSQL_DBASE;" 2>&1 > /dev/null)
+  for i in "${!MENU[@]}"; do
+    IFS=":" read -r SECTION_LABEL OPTION_LABEL _ <<< "${MENU[$i]}"
+    if [[ ! -z $SECTION_LABEL ]]; then
+      printf "\t${YELLOW}${BOLD}%s${RESET}\n" "$SECTION_LABEL"
+    fi
+    OPTION_LABEL=$(echo $OPTION_LABEL | sed -E 's/^ *//')
+    printf "\t\t%-2d - ${YELLOW}%s${RESET}\n" "$(( $i + 1 ))" "$OPTION_LABEL"
+  done
+
+  printf "Option:"
+}
+
+MENU_EXEC() {
+  read INPUT
+  if [[ ! $INPUT =~ ^[0-9]+$ || $INPUT -gt ${#MENU[@]} || $INPUT -lt 1 ]]; then
+    print_cmd_error "Option '$INPUT' doesn't exist."
+    MAIN
+  fi
+  OPTION_SELECTED="${MENU[ (( $INPUT - 1 )) ]}"
+  CMD=$(echo $OPTION_SELECTED | sed -E 's/^.*:.*: *(.*)$/\1/')
+  eval $CMD
+}
+
+db_create() {
+  local ERROR=$(PSQL "create database $PSQL_DBASE;" "postgres" 2>&1 > /dev/null)
   if [[ -z $ERROR ]]; then
     print_cmd_output "Database '$PSQL_DBASE' created."
   else
@@ -124,8 +108,8 @@ create_db() {
   fi
 }
 
-remove_db() {
-  local ERROR=$(PSQL "postgres" "drop database $PSQL_DBASE;" 2>&1 > /dev/null)
+db_remove() {
+  local ERROR=$(PSQL "drop database $PSQL_DBASE;" "postgres" 2>&1 >/dev/null)
   if [[ -z $ERROR ]]; then
     print_cmd_output "Database '$PSQL_DBASE' removed."
   else
@@ -133,65 +117,105 @@ remove_db() {
   fi
 }
 
-create_table_teams() {
-  local RESULT=$(PSQL $PSQL_DBASE "create table teams(
-    team_id serial not null primary key,
-    name text unique not null  
-  );" 2>&1 > /dev/null)
-  if [[ -z $RESULT ]]; then
-    print_cmd_output "Table 'teams' created."
+tables_create() {
+  for i in "${!TABLES[@]}"; do
+    # remove new lines
+    local TABLE_FORMAT=$(echo ${TABLES[$i]} | sed -E 's/\n//')
+    # create table
+    local ERROR=$(PSQL "create table $TABLE_FORMAT;" 2>&1 > /dev/null)
+    if [[ ! -z $ERROR ]]; then
+      print_cmd_error "$ERROR"
+    else
+      # get table name
+      local TABLE_NAME=$(echo "$TABLE_FORMAT" | sed -E 's/^(\w*)\(.*$/\1/')
+      print_cmd_output "Table '$TABLE_NAME' created."
+    fi
+  done
+}
+
+tables_init() {
+  if [[ -z $SCRIPT_FILE_DATA_INIT ]]; then
+    print_cmd_error "Script file for data initialization not specified."
+  elif [[ ! -f $SCRIPT_DIR/$SCRIPT_FILE_DATA_INIT ]]; then
+    print_cmd_error "Script file '$SCRIPT_FILE_DATA_INIT' not found."
   else
-    print_cmd_error "$RESULT"
+      print_cmd_output "Inserting ..."
+    local ERROR=$($SCRIPT_DIR/$SCRIPT_FILE_DATA_INIT $PSQL_USER 2>&1 >/dev/null)
+    if [[ ! -z $ERROR ]]; then
+      print_cmd_error "$ERROR"
+    else
+      print_cmd_output "Data inserted into tables."
+    fi
   fi
 }
 
-create_table_games() {
-  local ERROR=$(PSQL $PSQL_DBASE "create table games(
-    game_id serial not null primary key,
-    year int not null,
-    round varchar not null,
-    winner_id int not null references teams(team_id),
-    opponent_id int not null references teams(team_id),
-    winner_goals int not null,
-    opponent_goals int not null
-  );" 2>&1 > /dev/null)
-  if [[ -z $ERROR ]]; then
-    print_cmd_output "Table 'games' created."
-  else
+tables_clear() {
+  local TABLE_NAMES=""
+
+  for i in "${!TABLES[@]}"; do
+    # remove new lines
+    local TABLE_FORMAT=$(echo ${TABLES[$i]} | sed -E 's/\n//')
+    # get table name
+    local TABLE_NAME=$(echo "$TABLE_FORMAT" | sed -E 's/^(\w*)\(.*$/\1/')
+    # add table name to list of table names
+    if [[ -z $TABLE_NAMES ]]; then
+      TABLE_NAMES+="$TABLE_NAME"
+    else
+      TABLE_NAMES+=", $TABLE_NAME"
+    fi
+  done
+  # truncate tables
+  local ERROR=$(PSQL "truncate table $TABLE_NAMES;" 2>&1 > /dev/null)
+  if [[ ! -z $ERROR ]]; then
     print_cmd_error "$ERROR"
-  fi
-}
-
-init_tables() {
-  local ERROR=$($SCRIPT_DATA $PSQL_USER 2>&1 > /dev/null)
-  if [[ -z $ERROR ]]; then
-    print_cmd_output "Data inserted into tables."
   else
-    print_cmd_error "$ERROR"
+    print_cmd_output "Tables $TABLE_NAMES cleared."
   fi
 }
 
-clear_tables() {
-  PSQL $PSQL_DBASE "truncate table games, teams;" > /dev/null
-  print_cmd_output "Data removed from tables."
+dump_create() {
+  if [[ $(psql -U $PSQL_USER -lqtA | cut -d \| -f 1 | grep -w $PSQL_DBASE) != $PSQL_DBASE ]]; then
+    print_cmd_error "Database '$PSQL_DBASE' doesn't exit. Nothing to dump."
+  elif [[ -f $SCRIPT_DIR/$PSQL_DBASE.sql ]]; then
+    print_cmd_error "Dump file '$PSQL_DBASE.sql' found. Remove current dump file before creating."
+  else
+    pg_dump -cC --inserts -U $PSQL_USER $PSQL_DBASE > "$SCRIPT_DIR/$PSQL_DBASE.sql"
+    print_cmd_output "Dump file '$PSQL_DBASE.sql' created"
+  fi
 }
 
-create_dump() {
-  pg_dump -cC --inserts -U $PSQL_USER $PSQL_DBASE > "$PSQL_DBASE.sql"
-  print_cmd_output "Dump file '$PSQL_DBASE.sql' created"
+dump_import() {
+  if [[ ! -f $SCRIPT_DIR/$PSQL_DBASE.sql ]]; then
+    print_cmd_error "Dump file '$PSQL_DBASE.sql' not found. Create dump file first."
+  else
+    local ERROR=$(psql -U $PSQL_USER -d $PSQL_DBASE < $SCRIPT_DIR/$PSQL_DBASE.sql 2>&1 >/dev/null)
+    if [[ ! -z $ERROR ]]; then
+      print_cmd_error "$ERROR"
+    else
+      print_cmd_output "Dump file '$PSQL_DBASE.sql' imported."
+    fi   
+  fi
 }
 
-remove_dump() {
-  if [[ -f "$PSQL_DBASE.sql" ]]; then
-    rm "$PSQL_DBASE.sql"
+dump_remove() {
+  if [[ ! -f $SCRIPT_DIR/$PSQL_DBASE.sql ]]; then
+    print_cmd_error "Dump file '$PSQL_DBASE.sql' not found. Nothing to remove"
+  else
+    rm $SCRIPT_DIR/$PSQL_DBASE.sql
     print_cmd_output "Dump file '$PSQL_DBASE.sql' removed."
-  else
-    print_cmd_output "Dump file '$PSQL_DBASE.sql' doesn't exist. Nothing to remove."
   fi
 }
 
-run_query() {
-  $SCRIPT_QUERY $PSQL_USER
+query() {
+  if [[ -z $SCRIPT_FILE_QUERY ]]; then
+    print_cmd_error "Script file for query not specified."
+  elif [[ ! -f $SCRIPT_DIR/$SCRIPT_FILE_QUERY ]]; then
+    print_cmd_error "Script file '$SCRIPT_FILE_QUERY' not found."
+  else
+    print_cmd_output "$($SCRIPT_DIR/$SCRIPT_FILE_QUERY $PSQL_USER)"
+  fi
 }
 
-main; exit 0
+printf "\n\n ${BLUE}${BOLD}%+30s${RESET} \n\n" "~~ $SCRIPT_HEADER ~~ "
+
+MAIN; exit 0
