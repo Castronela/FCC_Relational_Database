@@ -3,9 +3,9 @@
 printf "\n%+30s\n\n" "~~ Bike Rental Shop Database Setup ~~"
 
 PSQL_USER="freecodecamp"
-PSQL_DBASE="worldcup"
-SCRIPT_DATA="./insert_data.sh"
-SCRIPT_QUERY="./queries.sh"
+PSQL_DBASE="bikes"
+SCRIPT_DATA=
+SCRIPT_QUERY=
 
 GREEN='\e[32m'
 RED='\e[31m'
@@ -51,7 +51,7 @@ display_menu() {
 menu_database() {
   print_title "Database:"
   MENU_DB=(
-    "Create Database and Columns, create_db;create_table_teams;create_table_games"
+    "Create Database and Columns, create_db;create_table_bikes;create_table_customers;create_table_rentals"
     "Remove Database, remove_db"
   )
   print_arr "${MENU_DB[@]}" 
@@ -133,46 +133,65 @@ remove_db() {
   fi
 }
 
-create_table_teams() {
-  local RESULT=$(PSQL $PSQL_DBASE "create table teams(
-    team_id serial not null primary key,
-    name text unique not null  
+create_table_bikes() {
+  local RESULT=$(PSQL $PSQL_DBASE "create table bikes(
+    bike_id serial not null primary key,
+    type varchar (50) not null, 
+    size int not null,
+    available boolean not null default true
   );" 2>&1 > /dev/null)
   if [[ -z $RESULT ]]; then
-    print_cmd_output "Table 'teams' created."
+    print_cmd_output "Table 'bikes' created."
   else
     print_cmd_error "$RESULT"
   fi
 }
 
-create_table_games() {
-  local ERROR=$(PSQL $PSQL_DBASE "create table games(
-    game_id serial not null primary key,
-    year int not null,
-    round varchar not null,
-    winner_id int not null references teams(team_id),
-    opponent_id int not null references teams(team_id),
-    winner_goals int not null,
-    opponent_goals int not null
+create_table_customers() {
+  local RESULT=$(PSQL $PSQL_DBASE "create table customers(
+    customer_id serial not null primary key,
+    phone varchar (15) not null unique,
+    name varchar (40) not null
   );" 2>&1 > /dev/null)
-  if [[ -z $ERROR ]]; then
-    print_cmd_output "Table 'games' created."
+  if [[ -z $RESULT ]]; then
+    print_cmd_output "Table 'customers' created."
   else
-    print_cmd_error "$ERROR"
+    print_cmd_error "$RESULT"
   fi
 }
 
-init_tables() {
-  local ERROR=$($SCRIPT_DATA $PSQL_USER 2>&1 > /dev/null)
-  if [[ -z $ERROR ]]; then
-    print_cmd_output "Data inserted into tables."
+create_table_rentals() {
+  local RESULT=$(PSQL $PSQL_DBASE "create table rentals(
+    rental_id serial not null primary key,
+    customer_id int not null references customers(customer_id),
+    bike_id int not null references bikes(bike_id),
+    date_rented date not null default now(),
+    date_returned date
+  );" 2>&1 > /dev/null)
+  if [[ -z $RESULT ]]; then
+    print_cmd_output "Table 'rentals' created."
   else
-    print_cmd_error "$ERROR"
+    print_cmd_error "$RESULT"
   fi
+}
+
+
+init_tables() {
+  if [[ ! -z $SCRIPT_DATA ]]; then
+    local ERROR=$($SCRIPT_DATA $PSQL_USER 2>&1 > /dev/null)
+    if [[ -z $ERROR ]]; then
+      print_cmd_output "Data inserted into tables."
+    else
+      print_cmd_error "$ERROR"
+    fi
+  else
+    print_cmd_output "No insert data script."
+  fi
+  
 }
 
 clear_tables() {
-  PSQL $PSQL_DBASE "truncate table games, teams;" > /dev/null
+  PSQL $PSQL_DBASE "truncate table bikes, customers, rentals;" > /dev/null
   print_cmd_output "Data removed from tables."
 }
 
@@ -191,7 +210,11 @@ remove_dump() {
 }
 
 run_query() {
-  $SCRIPT_QUERY $PSQL_USER
+  if [[ ! -z $SCRIPT_QUERY ]]; then
+    $SCRIPT_QUERY $PSQL_USER
+  else
+    print_cmd_output "No query script."
+  fi
 }
 
 main; exit 0
