@@ -1,14 +1,15 @@
 #!/bin/bash
 
 PSQL_USER=$1
+SERVICES_FILE="services.csv"
 
-SERVICES=(
-  "cut"
-  "color"
-  "perm"
-  "style"
-  "trim"
-)
+GET_SERVICES() {
+  SERVICES=()
+  while read -r SERVICE; do
+    SERVICES+=("$SERVICE")
+  done < "$SERVICES_FILE"
+}
+GET_SERVICES
 
 PSQL() {
   psql -X -U $PSQL_USER -d salon --no-align --tuples-only -c "$1"

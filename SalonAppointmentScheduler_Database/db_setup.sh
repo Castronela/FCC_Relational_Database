@@ -8,7 +8,7 @@ PSQL_DBASE="salon"
 
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
 SCRIPT_FILE_DATA_INIT="insert_data.sh"
-SCRIPT_FILE_QUERY=""
+SCRIPT_FILE_QUERY="salon.sh"
 
 TABLES=(
   "customers(
@@ -214,7 +214,7 @@ query() {
   elif [[ ! -f $SCRIPT_DIR/$SCRIPT_FILE_QUERY ]]; then
     print_cmd_error "Script file '$SCRIPT_FILE_QUERY' not found."
   else
-    print_cmd_output "$($SCRIPT_DIR/$SCRIPT_FILE_QUERY $PSQL_USER)"
+    bash -c "$SCRIPT_DIR/$SCRIPT_FILE_QUERY $PSQL_USER" 2>&1 | sed 's/.*/\x1b[32m&\x1b[0m/'
   fi
 }
 

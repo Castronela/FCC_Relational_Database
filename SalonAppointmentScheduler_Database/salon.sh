@@ -1,19 +1,21 @@
 #!/bin/bash
 
-echo -e "\n~~~~~ MY SALON ~~~~~\n\n"
+echo -e "\n\n~~~~~ MY SALON ~~~~~\n"
+
+SERVICES_FILE="services.csv"
 
 PSQL_USER="david"
 if [[ $1 ]]; then
   PSQL_USER=$1
 fi
 
-SERVICES=(
-  "cut"
-  "color"
-  "perm"
-  "style"
-  "trim"
-)
+GET_SERVICES() {
+  SERVICES=()
+  while read -r SERVICE; do
+    SERVICES+=("$SERVICE")
+  done < "$SERVICES_FILE"
+}
+GET_SERVICES
 
 PSQL() {
   psql -U $PSQL_USER -d salon --no-align --tuples-only -c "$1"
