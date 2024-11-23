@@ -44,8 +44,8 @@ PROCESS_USER() {
   local SERVICE_INDEX="$1"
   echo -e "\n What's your phone number?"
   read CUSTOMER_PHONE
-  local NAME=$(PSQL "select name from customers where phone='$CUSTOMER_PHONE';")
-  if [[ -z $NAME ]]; then
+  local CUSTOMER_NAME=$(PSQL "select name from customers where phone='$CUSTOMER_PHONE';")
+  if [[ -z $CUSTOMER_NAME ]]; then
     echo -e "\nI don't have a record for that phone number, what's your name?"
     read CUSTOMER_NAME
     PSQL "insert into customers (phone, name) values ('$CUSTOMER_PHONE', '$CUSTOMER_NAME');" > /dev/null 2>&1
